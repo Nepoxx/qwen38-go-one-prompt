@@ -1,5 +1,21 @@
 # Tetris
 
+Built from a single prompt:
+
+> Build a complete, polished Tetris game in Go.
+>
+> Make it a graphical desktop application, not a terminal application. Choose an appropriate Go game/windowing library and set up the project yourself.
+>
+> The game should feel like a real small game rather than a technical demo. It should have:
+>
+> - A standard 10×20 playfield
+> - All seven tetrominoes
+> - Piece movement and rotation
+> - Correct collision detection
+> - Gravity and progressively increasing difficulty
+>
+> This is a clean git repository. Also commit and push your changes. They should include a sensible gitignore and the commits should demonstrate progress
+
 A complete Tetris game for the desktop, written in Go with [Ebiten](https://ebiten.org/) (OpenGL/OpenGL ES rendering).
 
 ## Build & run
