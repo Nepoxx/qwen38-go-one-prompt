@@ -1,0 +1,7 @@
+# Compiled binaries
+/tetris
+*.exe
+
+# Editor/OS noise
+*.swp
+.DS_Store
