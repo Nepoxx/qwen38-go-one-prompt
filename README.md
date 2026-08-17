@@ -1,6 +1,6 @@
 # Tetris
 
-Built from a single prompt:
+Built from two prompts:
 
 > Build a complete, polished Tetris game in Go.
 >
@@ -15,6 +15,8 @@ Built from a single prompt:
 > - Gravity and progressively increasing difficulty
 >
 > This is a clean git repository. Also commit and push your changes. They should include a sensible gitignore and the commits should demonstrate progress
+
+> Add support for colorblind users. It should be a game option.
 
 A complete Tetris game for the desktop, written in Go with [Ebiten](https://ebiten.org/) (OpenGL/OpenGL ES rendering).
 
@@ -45,6 +47,7 @@ go test ./...
 | Space         | Hard drop (+2/cell) |
 | P             | Pause           |
 | R             | Restart         |
+| C             | Colorblind mode |
 
 ## Gameplay
 
@@ -52,6 +55,9 @@ go test ./...
 - 7-bag randomizer (every piece appears once per bag)
 - SRS-style rotation with wall kicks
 - Ghost piece showing the landing position
+- Colorblind mode (C): every piece kind gets a unique white shape marker
+  (bar, dot, ring, square, X, triangle) so pieces stay distinguishable
+  without relying on color
 - Scoring: 100/300/500/800 × level for 1–4 lines, plus drop bonuses
 - Level up every 10 lines; gravity speeds up from 800 ms to 80 ms per row
 

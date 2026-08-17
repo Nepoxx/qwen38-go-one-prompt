@@ -7,6 +7,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
@@ -59,7 +60,8 @@ func newFace(size float64) *text.GoTextFace {
 }
 
 type app struct {
-	g *game
+	g  *game
+	cb bool // colorblind mode: unique marker per piece kind
 }
 
 func newApp() *app { return &app{g: newGame()} }
@@ -68,6 +70,9 @@ func (a *app) Layout(w, h int) (int, int) { return winW, winH }
 
 func (a *app) Update() error {
 	a.g.update()
+	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
+		a.cb = !a.cb
+	}
 	return nil
 }
 
@@ -93,7 +98,7 @@ func (a *app) drawBoard(screen *ebiten.Image) {
 	for y := 0; y < rows; y++ {
 		for x := 0; x < cols; x++ {
 			if k := a.g.board[y][x]; k != empty {
-				a.block(screen, boardX+float64(x)*px, boardY+float64(y)*px, pieceColor[k])
+				a.blockAt(screen, boardX+float64(x)*px, boardY+float64(y)*px, pieceColor[k], k)
 			}
 		}
 	}
@@ -103,18 +108,58 @@ func (a *app) drawBoard(screen *ebiten.Image) {
 			a.ghostBlock(screen, boardX+float64(gh.x+c.x)*px, boardY+float64(gh.y+c.y)*px, pieceColor[a.g.cur.kind])
 		}
 		for _, c := range a.g.cur.cells() {
-			a.block(screen, boardX+float64(a.g.cur.x+c.x)*px, boardY+float64(a.g.cur.y+c.y)*px, pieceColor[a.g.cur.kind])
+			a.blockAt(screen, boardX+float64(a.g.cur.x+c.x)*px, boardY+float64(a.g.cur.y+c.y)*px, pieceColor[a.g.cur.kind], a.g.cur.kind)
 		}
 	}
 }
 
-// block draws a beveled px.
+// block draws a beveled cell, with a per-kind marker in colorblind mode.
 func (a *app) block(screen *ebiten.Image, x, y float64, c color.Color) {
+	a.blockAt(screen, x, y, c, 0)
+}
+
+func (a *app) blockAt(screen *ebiten.Image, x, y float64, c color.Color, kind int) {
 	ebitenutil.DrawRect(screen, x, y, px, px, c)
 	ebitenutil.DrawRect(screen, x, y, px, 4, lighten(c, 40))
 	ebitenutil.DrawRect(screen, x, y, 4, px, lighten(c, 40))
 	ebitenutil.DrawRect(screen, x, y+px-4, px, 4, darken(c, 45))
 	ebitenutil.DrawRect(screen, x+px-4, y, 4, px, darken(c, 45))
+	if a.cb && kind != 0 {
+		a.marker(screen, x, y, c, kind)
+	}
+}
+
+// marker draws a shape unique to each piece kind so pieces stay
+// distinguishable without color.
+func (a *app) marker(screen *ebiten.Image, x, y float64, c color.Color, kind int) {
+	w := color.RGBA{255, 255, 255, 255}
+	cx, cy := x+px/2, y+px/2
+	switch kind {
+	case I: // horizontal bar
+		ebitenutil.DrawRect(screen, x+6, cy-2.5, px-12, 5, w)
+	case S: // vertical bar
+		ebitenutil.DrawRect(screen, cx-2.5, y+6, 5, px-12, w)
+	case L: // square
+		ebitenutil.DrawRect(screen, cx-5, cy-5, 10, 10, w)
+	case J: // dot
+		ebitenutil.DrawCircle(screen, cx, cy, 5.5, w)
+	case O: // ring
+		ebitenutil.DrawCircle(screen, cx, cy, 7, w)
+		ebitenutil.DrawCircle(screen, cx, cy, 3.5, c)
+	case Z: // X
+		a.line(screen, x+7, y+7, x+px-7, y+px-7, w)
+		a.line(screen, x+7, y+px-7, x+px-7, y+7, w)
+	case T: // triangle
+		a.line(screen, cx, cy-7, cx-8, cy+6, w)
+		a.line(screen, cx-8, cy+6, cx+8, cy+6, w)
+		a.line(screen, cx+8, cy+6, cx, cy-7, w)
+	}
+}
+
+func (a *app) line(screen *ebiten.Image, x1, y1, x2, y2 float64, c color.Color) {
+	ebitenutil.DrawLine(screen, x1, y1, x2, y2, c)
+	ebitenutil.DrawLine(screen, x1+1, y1, x2+1, y2, c)
+	ebitenutil.DrawLine(screen, x1, y1+1, x2, y2+1, c)
 }
 
 // ghostBlock draws a translucent landing preview.
@@ -141,6 +186,12 @@ func (a *app) drawSide(screen *ebiten.Image) {
 	a.text(screen, "↓  soft drop", faceSmall, cDim, sideX, boardY+400, false)
 	a.text(screen, "space  hard drop", faceSmall, cDim, sideX, boardY+420, false)
 	a.text(screen, "P pause  R reset", faceSmall, cDim, sideX, boardY+440, false)
+	a.text(screen, "C  colorblind mode", faceSmall, cDim, sideX, boardY+460, false)
+	if a.cb {
+		a.text(screen, "COLORBLIND: ON", faceMid, cAccent, sideX, boardY+484, false)
+	} else {
+		a.text(screen, "COLORBLIND: OFF", faceMid, cDim, sideX, boardY+484, false)
+	}
 }
 
 // drawNext renders the upcoming piece centered in a 4x4 box.
@@ -167,7 +218,7 @@ func (a *app) drawNext(screen *ebiten.Image) {
 	h := float64(maxY-minY+1) * px
 	cx, cy := ox+(4*px-w)/2, oy+(4*px-h)/2
 	for _, c := range cells {
-		a.block(screen, cx+float64(c.x-minX)*px, cy+float64(c.y-minY)*px, pieceColor[a.g.next])
+		a.blockAt(screen, cx+float64(c.x-minX)*px, cy+float64(c.y-minY)*px, pieceColor[a.g.next], a.g.next)
 	}
 }
 
